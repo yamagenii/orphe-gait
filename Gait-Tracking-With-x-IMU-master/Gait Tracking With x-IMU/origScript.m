@@ -169,6 +169,7 @@ else	%classdef wasn't implemented in Octave 3.6.4
 		AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
 	end
 
+    disp(AHRSStruct.q);
 	% For all data
 	for t = 1:length(time)
 		if(stationary(t))
@@ -193,6 +194,18 @@ acc = quaternRotate([accX accY accZ], quaternConj(quat));
 % Convert acceleration measurements to m/s/s
 acc = acc * 9.81;
 
+% Plot quaternion
+figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Quaternion');
+hold on;
+plot(time, quat(:,1), 'r');
+plot(time, quat(:,2), 'g');
+plot(time, quat(:,3), 'b');
+plot(time, quat(:,4), 'p');
+title('Quaternion');
+xlabel('Time (s)');
+ylabel('Quaternion');
+legend('W','X', 'Y', 'Z');
+hold off;
 % Plot translational accelerations
 figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
 hold on;

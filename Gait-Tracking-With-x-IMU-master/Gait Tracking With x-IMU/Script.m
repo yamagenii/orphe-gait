@@ -11,14 +11,14 @@ pkg load signal
 % Select dataset (comment in/out)
 
 %slow
-filePath = './line_slow.csv'
-startTime = 58;
-stopTime = 89;
+%filePath = './line_slow.csv'
+%startTime = 58;
+%stopTime = 89;
 
 %mid
-%filePath = './line_mid.csv'
-%startTime = 53;
-%stopTime = 78;
+filePath = './line_mid.csv'
+startTime = 53;
+stopTime = 78;
 
 %normal
 %filePath = './line_nomal.csv'
@@ -28,20 +28,23 @@ stopTime = 89;
 % -------------------------------------------------------------------------
 % Import data
 
+gyroRange = 500; %dps
+accRange = 2; %g
+
 samplePeriod = 1/50;
 xIMUdata = dlmread(filePath,',',1,0);
 time = xIMUdata(:,3)+(xIMUdata(:,4)*0.001);
-accX = xIMUdata(:,12)*2;%単位gにする;;
-accY = xIMUdata(:,13)*2;
-accZ = xIMUdata(:,14)*2;
-gyrX = xIMUdata(:,15);
-gyrY = xIMUdata(:,16);
-gyrZ = xIMUdata(:,17);
+accX = xIMUdata(:,12)*accRange;%単位gにする;;
+accY = xIMUdata(:,13)*accRange;
+accZ = xIMUdata(:,14)*accRange;
+gyrX = xIMUdata(:,15)*gyroRange;
+gyrY = xIMUdata(:,16)*gyroRange;
+gyrZ = xIMUdata(:,17)*gyroRange;
 
-%qW = xIMUdata(:,5);
-%qX = xIMUdata(:,6);
-%qY = xIMUdata(:,7);
-%qZ = xIMUdata(:,8);
+qW = xIMUdata(:,5);
+qX = xIMUdata(:,6);
+qY = xIMUdata(:,7);
+qZ = xIMUdata(:,8);
 clear('xIMUdata');
 
 % -------------------------------------------------------------------------
@@ -58,10 +61,10 @@ accX = accX(indexSel, :);
 accY = accY(indexSel, :);
 accZ = accZ(indexSel, :);
 
-%qW = qW(indexSel, :);
-%qX = qX(indexSel, :);
-%qY = qY(indexSel, :);
-%qZ = qZ(indexSel, :);
+qW = qW(indexSel, :);
+qX = qX(indexSel, :);
+qY = qY(indexSel, :);
+qZ = qZ(indexSel, :);
 
 
 % -------------------------------------------------------------------------
@@ -101,7 +104,7 @@ ax(1) = subplot(3,1,1);
     plot(time, gyrZ, 'b');
     title('Gyroscope');
     xlabel('Time (s)');
-    ylabel('Angular velocity (^\circ/s)');
+    ylabel('degree per second');
     legend('X', 'Y', 'Z');
     hold off;
 ax(2) = subplot(3,1,2);
@@ -134,16 +137,20 @@ end
 % -------------------------------------------------------------------------
 % Compute orientation
 
-%quat = [qW qX qY qZ]
+quat = [qW qX qY qZ]
 
 % Initial convergence
+
+
+
 initPeriod = 1;
 indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
 
-AHRSStruct = AHRS_Octave('SamplePeriod', 1/50, 'Kp', 1, 'KpInit', 1);
+initquat = [mean(qW(indexSel)) mean(qX(indexSel)) mean(qY(indexSel)) mean(qZ(indexSel))]
+
+
+AHRSStruct = AHRS_Octave('SamplePeriod', 1/50, 'Kp', 10, 'KpInit', 1);
 % Initial convergence
-initPeriod = 1;
-indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
 for i = 1:5000
     %disp(AHRSStruct.q);
 	AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
@@ -169,13 +176,14 @@ end
 acc = quaternRotate([accX accY accZ], quaternConj(quat));
 
 % % Remove gravity from measurements
- acc = acc - [zeros(length(time), 2) ones(length(time), 1)];     % unnecessary due to velocity integral drift compensation
+ %acc = acc - [zeros(length(time), 2) ones(length(time), 1)];     % unnecessary due to velocity integral drift compensation
 
 % Convert acceleration measurements to m/s/s
 acc = acc * 9.81;
 
+quat = [qW qX qY qZ];
 % Plot quaternion
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
+figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Quaternion');
 hold on;
 plot(time, quat(:,1), 'r');
 plot(time, quat(:,2), 'g');
@@ -251,16 +259,19 @@ for t = 2:length(pos)
     pos(t,:) = pos(t-1,:) + vel(t,:) * (time(t)- time(t-1));    % integrate velocity to yield position
 end
 
+planeNorm = sqrt(pos(:,1).*pos(:,1) + pos(:,2).*pos(:,2));
+
 % Plot translational position
 figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Position');
 hold on;
 plot(time, pos(:,1), 'r');
 plot(time, pos(:,2), 'g');
 plot(time, pos(:,3), 'b');
+plot(time, planeNorm, 'p');
 title('Position');
 xlabel('Time (s)');
 ylabel('Position (m)');
-legend('X', 'Y', 'Z');
+legend('X', 'Y', 'Z', 'plane');
 hold off;
 
 % -------------------------------------------------------------------------
