@@ -3,53 +3,65 @@ close all;
 clc;
 addpath('Quaternions');
 addpath('ximu_matlab_library');
-
-addpath('AHRS_Octave');
-pkg load signal
+%OCTAVE 3.6.4 couldn't handle some of the Matlab features used in the script (e.g. class declarations -> ximu_matlab_library didn't work)
+%Modified the code to enable running it with Octave on Windows platform
+%OCTAVE
+if exist ('OCTAVE_VERSION', 'builtin') 
+	addpath('AHRS_Octave');
+end
 
 % -------------------------------------------------------------------------
 % Select dataset (comment in/out)
+%OCTAVE
+if exist ('OCTAVE_VERSION', 'builtin') 
 
-%slow
-filePath = './line_slow.csv'
-startTime = 58;
-stopTime = 89;
+    pkg load signal
+	filePath = 'Datasets/straightLine_CalInertialAndMag.csv';
+else
+	filePath = 'Datasets/straightLine';
+end 
+startTime = 6;
+stopTime = 26;
 
-%mid
-%filePath = './line_mid.csv'
-%startTime = 53;
-%stopTime = 78;
+% filePath = 'Datasets/stairsAndCorridor';
+% startTime = 5;
+% stopTime = 53;
 
-%normal
-%filePath = './line_nomal.csv'
-%startTime = 38;
-%stopTime = 63;
+% filePath = 'Datasets/spiralStairs';
+% startTime = 4;
+% stopTime = 47;
 
 % -------------------------------------------------------------------------
 % Import data
 
-samplePeriod = 1/50;
-xIMUdata = dlmread(filePath,',',1,0);
-time = xIMUdata(:,3)+(xIMUdata(:,4)*0.001);
-accX = xIMUdata(:,12)*2;%単位gにする;;
-accY = xIMUdata(:,13)*2;
-accZ = xIMUdata(:,14)*2;
-gyrX = xIMUdata(:,15);
-gyrY = xIMUdata(:,16);
-gyrZ = xIMUdata(:,17);
-
-%qW = xIMUdata(:,5);
-%qX = xIMUdata(:,6);
-%qY = xIMUdata(:,7);
-%qZ = xIMUdata(:,8);
+samplePeriod = 1/256;
+if exist ('OCTAVE_VERSION', 'builtin') 
+	xIMUdata = dlmread(filePath,',',1,0);
+	time = xIMUdata(:,1)*samplePeriod;
+	gyrX = xIMUdata(:,2);
+	gyrY = xIMUdata(:,3);
+	gyrZ = xIMUdata(:,4);
+	accX = xIMUdata(:,5);
+	accY = xIMUdata(:,6);
+	accZ = xIMUdata(:,7);
+else
+	xIMUdata = xIMUdataClass(filePath, 'InertialMagneticSampleRate', 1/samplePeriod);
+	time = xIMUdata.CalInertialAndMagneticData.Time;
+	gyrX = xIMUdata.CalInertialAndMagneticData.Gyroscope.X;
+	gyrY = xIMUdata.CalInertialAndMagneticData.Gyroscope.Y;
+	gyrZ = xIMUdata.CalInertialAndMagneticData.Gyroscope.Z;
+	accX = xIMUdata.CalInertialAndMagneticData.Accelerometer.X;
+	accY = xIMUdata.CalInertialAndMagneticData.Accelerometer.Y;
+	accZ = xIMUdata.CalInertialAndMagneticData.Accelerometer.Z;
+end 
 clear('xIMUdata');
-
 % -------------------------------------------------------------------------
 % Manually frame data
 
-%startTime ~ stopTimeのセルの行番号を1にする
-indexSel = find(sign(time-startTime)+1, 1) : find(sign(time-stopTime)+1, 1);
+% startTime = 0;
+% stopTime = 10;
 
+indexSel = find(sign(time-startTime)+1, 1) : find(sign(time-stopTime)+1, 1);
 time = time(indexSel);
 gyrX = gyrX(indexSel, :);
 gyrY = gyrY(indexSel, :);
@@ -58,12 +70,6 @@ accX = accX(indexSel, :);
 accY = accY(indexSel, :);
 accZ = accZ(indexSel, :);
 
-%qW = qW(indexSel, :);
-%qX = qX(indexSel, :);
-%qY = qY(indexSel, :);
-%qZ = qZ(indexSel, :);
-
-
 % -------------------------------------------------------------------------
 % Detect stationary periods
 
@@ -71,12 +77,8 @@ accZ = accZ(indexSel, :);
 acc_mag = sqrt(accX.*accX + accY.*accY + accZ.*accZ);
 
 % HP filter accelerometer data
-%正規化されたカットオフ周波数 Wn をもつ n 次のローパス デジタル バタワース フィルター
-%filtCutOff = 0.001;
 filtCutOff = 0.001;
 [b, a] = butter(1, (2*filtCutOff)/(1/samplePeriod), 'high');
-
-%ゼロ位相デジタルフィルター 遅延をなくす
 acc_magFilt = filtfilt(b, a, acc_mag);
 
 % Compute absolute value
@@ -109,11 +111,12 @@ ax(2) = subplot(3,1,2);
     plot(time, accX, 'r');
     plot(time, accY, 'g');
     plot(time, accZ, 'b');
-    %plot(time, acc_mag, 'r');
+    plot(time, acc_magFilt, ':k');
+    plot(time, double(stationary), 'k', 'LineWidth', 2);	%Octave couldn't plot booleans
     title('Accelerometer');
     xlabel('Time (s)');
     ylabel('Acceleration (g)');
-    legend('X', 'Y', 'Z');
+    legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
     hold off;
 ax(3) = subplot(3,1,3);
     hold on;
@@ -128,40 +131,56 @@ ax(3) = subplot(3,1,3);
     %legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
     legend('Filtered', 'Stationary');
     hold off;
-if ~exist('OCTAVE_VERSION','builtin')
-    linkaxes(ax,'x');
+
+if ~exist ('OCTAVE_VERSION', 'builtin')
+	linkaxes(ax,'x');	%Octave 3.6.4 had not implemented linkaxes
 end
+
 % -------------------------------------------------------------------------
 % Compute orientation
 
-%quat = [qW qX qY qZ]
-
+quat = zeros(length(time), 4);
 % Initial convergence
-initPeriod = 1;
+initPeriod = 2;
 indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
 
-AHRSStruct = AHRS_Octave('SamplePeriod', 1/50, 'Kp', 1, 'KpInit', 1);
-% Initial convergence
-initPeriod = 1;
-indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
-for i = 1:5000
-    %disp(AHRSStruct.q);
-	AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
-end
-
-disp(AHRSStruct.q);
-
-%
-%	% For all data
-for t = 1:length(time)
-	if(stationary(t))
-		AHRSStruct.Kp = 0.5;
-	else
-		AHRSStruct.Kp = 0;
+if ~exist ('OCTAVE_VERSION', 'builtin')
+	AHRSalgorithm = AHRS('SamplePeriod', 1/256, 'Kp', 1, 'KpInit', 1);
+	for i = 1:2000
+		AHRSalgorithm.UpdateIMU([0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
 	end
-	AHRSStruct = UpdateIMU(AHRSStruct,deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
-    quat(t,:) = AHRSStruct.Quaternion;
+
+	% For all data
+	for t = 1:length(time)
+		if(stationary(t))
+			AHRSalgorithm.Kp = 0.5;
+		else
+			AHRSalgorithm.Kp = 0;
+		end
+		AHRSalgorithm.UpdateIMU(deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
+		quat(t,:) = AHRSalgorithm.Quaternion;
+	end
+else	%classdef wasn't implemented in Octave 3.6.4
+	AHRSStruct = AHRS_Octave('SamplePeriod', 1/256, 'Kp', 1, 'KpInit', 1);
+	% Initial convergence
+	initPeriod = 2;
+	indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
+	for i = 1:2000
+		AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
+	end
+
+	% For all data
+	for t = 1:length(time)
+		if(stationary(t))
+			AHRSStruct.Kp = 0.5;
+		else
+			AHRSStruct.Kp = 0;
+		end
+		AHRSStruct = UpdateIMU(AHRSStruct,deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
+		quat(t,:) = AHRSStruct.Quaternion;
+	end
 end
+
 % -------------------------------------------------------------------------
 % Compute translational accelerations
 
@@ -169,25 +188,11 @@ end
 acc = quaternRotate([accX accY accZ], quaternConj(quat));
 
 % % Remove gravity from measurements
- acc = acc - [zeros(length(time), 2) ones(length(time), 1)];     % unnecessary due to velocity integral drift compensation
+% acc = acc - [zeros(length(time), 2) ones(length(time), 1)];     % unnecessary due to velocity integral drift compensation
 
 % Convert acceleration measurements to m/s/s
 acc = acc * 9.81;
 
-% Plot quaternion
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
-hold on;
-plot(time, quat(:,1), 'r');
-plot(time, quat(:,2), 'g');
-plot(time, quat(:,3), 'b');
-plot(time, quat(:,4), 'p');
-title('Quaternion');
-xlabel('Time (s)');
-ylabel('Quaternion');
-legend('W','X', 'Y', 'Z');
-hold off;
-
-% -------------------------------------------------------------------------
 % Plot translational accelerations
 figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
 hold on;
@@ -208,8 +213,7 @@ acc(:,3) = acc(:,3) - 9.81;
 % Integrate acceleration to yield velocity
 vel = zeros(size(acc));
 for t = 2:length(vel)
-    %vel(t,:) = vel(t-1,:) + acc(t,:) * samplePeriod;
-    vel(t,:) = vel(t-1,:) + acc(t,:) * (time(t)-time(t-1));
+    vel(t,:) = vel(t-1,:) + acc(t,:) * samplePeriod;
     if(stationary(t) == 1)
         vel(t,:) = [0 0 0];     % force zero velocity when foot stationary
     end
@@ -248,7 +252,7 @@ hold off;
 % Integrate velocity to yield position
 pos = zeros(size(vel));
 for t = 2:length(pos)
-    pos(t,:) = pos(t-1,:) + vel(t,:) * (time(t)- time(t-1));    % integrate velocity to yield position
+    pos(t,:) = pos(t-1,:) + vel(t,:) * samplePeriod;    % integrate velocity to yield position
 end
 
 % Plot translational position
@@ -280,15 +284,14 @@ quatPlot = [quatPlot; [quatPlot(end, 1)*onesVector, quatPlot(end, 2)*onesVector,
 
 
 
-% Create 6 DOF animation
-
 if ~exist ('OCTAVE_VERSION', 'builtin')
-    SamplePlotFreq = 4;
-    Spin = 120;
-    SixDofAnimation(posPlot, quatern2rotMat(quatPlot), ...
-                    'SamplePlotFreq', SamplePlotFreq, 'Trail', 'All', ...
-                    'Position', [9 39 1280 768], 'View', [(100:(Spin/(length(posPlot)-1)):(100+Spin))', 10*ones(length(posPlot), 1)], ...
-                    'AxisLength', 0.1, 'ShowArrowHead', false, ...
-                    'Xlabel', 'X (m)', 'Ylabel', 'Y (m)', 'Zlabel', 'Z (m)', 'ShowLegend', false, ...
-                    'CreateAVI', false, 'AVIfileNameEnum', false, 'AVIfps', ((1/samplePeriod) / SamplePlotFreq));
+% Create 6 DOF animation
+SamplePlotFreq = 4;
+Spin = 120;
+SixDofAnimation(posPlot, quatern2rotMat(quatPlot), ...
+                'SamplePlotFreq', SamplePlotFreq, 'Trail', 'All', ...
+                'Position', [9 39 1280 768], 'View', [(100:(Spin/(length(posPlot)-1)):(100+Spin))', 10*ones(length(posPlot), 1)], ...
+                'AxisLength', 0.1, 'ShowArrowHead', false, ...
+                'Xlabel', 'X (m)', 'Ylabel', 'Y (m)', 'Zlabel', 'Z (m)', 'ShowLegend', false, ...
+                'CreateAVI', false, 'AVIfileNameEnum', false, 'AVIfps', ((1/samplePeriod) / SamplePlotFreq));
 end
