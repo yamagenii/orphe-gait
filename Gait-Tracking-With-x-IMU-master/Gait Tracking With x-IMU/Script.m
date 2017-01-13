@@ -277,6 +277,15 @@ hold off;
 % -------------------------------------------------------------------------
 % Plot 3D foot trajectory
 
+% 
+figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Position3d');
+plot3(pos(:,1),pos(:,2),pos(:,3), 'r*');
+title('Position3d');
+xlabel('xPosition (m)');
+ylabel('yPosition (m)');
+zlabel('zPosition (m)');
+legend('pos');
+
 % % Remove stationary periods from data to plot
 % posPlot = pos(find(~stationary), :);
 % quatPlot = quat(find(~stationary), :);
