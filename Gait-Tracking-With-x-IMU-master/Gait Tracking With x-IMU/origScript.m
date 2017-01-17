@@ -22,12 +22,12 @@ else
 end 
 startTime = 6;
 stopTime = 26;
-startTime = 13;
-stopTime = 13.5;
+%startTime = 13;
+%topTime = 13.5;
 
- filePath = 'Datasets/stairsAndCorridor_CalInertialAndMag.csv';
- startTime = 5;
- stopTime = 53;
+ %filePath = 'Datasets/stairsAndCorridor_CalInertialAndMag.csv';
+ %startTime = 5;
+ %stopTime = 53;
 
 % filePath = 'Datasets/spiralStairs';
 % startTime = 4;
@@ -95,14 +95,14 @@ accX = accX(indexSel, :);
 accY = accY(indexSel, :);
 accZ = accZ(indexSel, :);
 
-indexSel = find(sign(time256-startTime)+1, 1) : find(sign(time256-stopTime)+1, 1);
-time = time256(indexSel);
-gyrX = gyrX256(indexSel, :);
-gyrY = gyrY256(indexSel, :);
-gyrZ = gyrZ256(indexSel, :);
-accX = accX256(indexSel, :);
-accY = accY256(indexSel, :);
-accZ = accZ256(indexSel, :);
+%indexSel = find(sign(time256-startTime)+1, 1) : find(sign(time256-stopTime)+1, 1);
+%time = time256(indexSel);
+%gyrX = gyrX256(indexSel, :);
+%gyrY = gyrY256(indexSel, :);
+%gyrZ = gyrZ256(indexSel, :);
+%accX = accX256(indexSel, :);
+%accY = accY256(indexSel, :);
+%accZ = accZ256(indexSel, :);
 % -------------------------------------------------------------------------
 % Detect stationary periods
 
@@ -128,47 +128,29 @@ stationary = acc_magFilt < 0.05;
 % -------------------------------------------------------------------------
 % Plot data raw sensor data and stationary periods
 
-figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Sensor Data');
-ax(1) = subplot(3,1,1);
-    hold on;
-    %plot(time, gyrX, 'r');
-    %plot(time, gyrY, 'g');
-    %plot(time, gyrZ, 'b');
-    plot(time256, accX256, 'r');
-    plot(time256, accY256, 'g');
-    plot(time256, accZ256, 'b');
-    title('Gyroscope');
-    xlabel('Time (s)');
-    ylabel('Angular velocity (^\circ/s)');
-    ylabel('Acceleration (g)');
-    %legend('X', 'Y', 'Z');
-    hold off;
-ax(2) = subplot(3,1,2);
-    hold on;
-    plot(time, accX, 'r');
+figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'Sensor Data');
+ax = subplot(2,1,1);
+   hold on;
+   plot(time, gyrX, 'r');
+   plot(time, gyrY, 'g');
+   plot(time, gyrZ, 'b');
+%    title('Gyroscope');
+   xlabel('Time (s)');
+   ylabel('Angular velocity (^\circ/s)');
+   legend('X', 'Y', 'Z');
+   hold off;
+ax = subplot(2,1,2);
+   hold on;
+   plot(time, accX, 'r');
     plot(time, accY, 'g');
     plot(time, accZ, 'b');
-    %plot(time, acc_magFilt, ':k');
-    %plot(time, double(stationary), 'k', 'LineWidth', 2);	%Octave couldn't plot booleans
+    plot(time, acc_magFilt, ':k');
+    plot(time, stationary, 'k', 'LineWidth', 2);
     title('Accelerometer');
     xlabel('Time (s)');
     ylabel('Acceleration (g)');
-    %legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
+    legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
     hold off;
-ax(3) = subplot(3,1,3);
-    hold on;
-    %plot(time, accX, 'r');
-    %plot(time, accY, 'g');
-    %plot(time, accZ, 'b');
-    plot(time, acc_magFilt, ':k');
-    plot(time, double(stationary), 'k', 'LineWidth', 2);%octave
-    title('Accelerometer Magnitude Filtered');
-    xlabel('Time (s)');
-    ylabel('Acceleration (g)');
-    %legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
-    legend('Filtered', 'Stationary');
-    hold off;
-
 if ~exist ('OCTAVE_VERSION', 'builtin')
 	linkaxes(ax,'x');	%Octave 3.6.4 had not implemented linkaxes
 end
@@ -232,7 +214,7 @@ acc = quaternRotate([accX accY accZ], quaternConj(quat));
 acc = acc * 9.81;
 
 % Plot quaternion
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Quaternion');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Quaternion');
 hold on;
 plot(time, quat(:,1), 'r');
 plot(time, quat(:,2), 'g');
@@ -244,7 +226,7 @@ ylabel('Quaternion');
 legend('W','X', 'Y', 'Z');
 hold off;
 % Plot translational accelerations
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Accelerations');
 hold on;
 plot(time, acc(:,1), 'r');
 plot(time, acc(:,2), 'g');
@@ -286,7 +268,7 @@ end
 vel = vel - velDrift;
 
 % Plot translational velocity
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Velocity');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Velocity');
 hold on;
 plot(time, vel(:,1), 'r');
 plot(time, vel(:,2), 'g');
@@ -307,7 +289,7 @@ for t = 2:length(pos)
 end
 
 % Plot translational position
-figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Position');
+figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'Position');
 hold on;
 plot(time, pos(:,1), 'r');
 plot(time, pos(:,2), 'g');
