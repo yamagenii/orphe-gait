@@ -3,9 +3,10 @@ close all;
 clc;
 addpath('Quaternions');
 addpath('ximu_matlab_library');
-
-addpath('AHRS_Octave');
-pkg load signal
+if exist ('OCTAVE_VERSION', 'builtin') 
+	addpath('AHRS_Octave');
+    pkg load signal;
+end
 
 % -------------------------------------------------------------------------
 % Select dataset (comment in/out)
@@ -17,11 +18,11 @@ pkg load signal
 
 %mid
 %filePath = './line_mid.csv'
-%startTime = 55.5;
-%stopTime = 56.5;
+%startTime = 52;
+%stopTime = 78;
 
 %normal
-%filePath = './line_nomal.csv'
+%filePath = './line_normal.csv'
 %startTime = 38;
 %stopTime = 63;
 
@@ -37,25 +38,25 @@ gyroRange = 500; %dps
 accRange = 2; %g
 
 samplePeriod = 1/50;
-xIMUdata = dlmread(filePath,',',1,0);
-time = xIMUdata(:,3)+(xIMUdata(:,4)*0.001);
-accX = xIMUdata(:,12)*accRange;%単位gにする;;
-accY = xIMUdata(:,13)*accRange;
-accZ = xIMUdata(:,14)*accRange;
-gyrX = xIMUdata(:,15)*gyroRange;
-gyrY = xIMUdata(:,16)*gyroRange;
-gyrZ = xIMUdata(:,17)*gyroRange;
+xIMUdata = csvread(filePath,1,2);
+time = xIMUdata(:,1)+(xIMUdata(:,2)*0.001);
+accX = xIMUdata(:,10)*accRange;%単位gにする;;
+accY = xIMUdata(:,11)*accRange;
+accZ = xIMUdata(:,12)*accRange;
+gyrX = xIMUdata(:,13)*gyroRange;
+gyrY = xIMUdata(:,14)*gyroRange;
+gyrZ = xIMUdata(:,15)*gyroRange;
 
-qW = xIMUdata(:,5);
-qX = xIMUdata(:,6);
-qY = xIMUdata(:,7);
-qZ = xIMUdata(:,8);
+qW = xIMUdata(:,3);
+qX = xIMUdata(:,4);
+qY = xIMUdata(:,5);
+qZ = xIMUdata(:,6);
 clear('xIMUdata');
 
 % -------------------------------------------------------------------------
 % Manually frame data
 
-%startTime ~ stopTimeのセルの行番号を1にする
+%startTime ~ stopTimeのセルの行番号�?にする
 indexSel = find(sign(time-startTime)+1, 1) : find(sign(time-stopTime)+1, 1);
 
 time = time(indexSel);
@@ -79,12 +80,12 @@ qZ = qZ(indexSel, :);
 acc_mag = sqrt(accX.*accX + accY.*accY + accZ.*accZ);
 
 % HP filter accelerometer data
-%正規化されたカットオフ周波数 Wn をもつ n 次のローパス デジタル バタワース フィルター
+%正規化されたカ�?��オフ周波数 Wn をもつ n 次のローパス �?��タル バタワース フィルター
 %filtCutOff = 0.001;
 filtCutOff = 0.001;
 [b, a] = butter(1, (2*filtCutOff)/(1/samplePeriod), 'high');
 
-%ゼロ位相デジタルフィルター 遅延をなくす
+%ゼロ位相�?��タルフィルター �?��をなくす
 acc_magFilt = filtfilt(b, a, acc_mag);
 
 % Compute absolute value
@@ -154,32 +155,48 @@ indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
 
 initquat = [mean(qW(indexSel)) mean(qX(indexSel)) mean(qY(indexSel)) mean(qZ(indexSel))]
 
-
-AHRSStruct = AHRS_Octave('SamplePeriod', 1/50, 'Kp', 10, 'KpInit', 1);
-% Initial convergence
-for i = 1:5000
-    %disp(AHRSStruct.q);
-	AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
-end
-
-disp(AHRSStruct.q);
-
-%
-%	% For all data
-for t = 1:length(time)
-	if(stationary(t))
-		AHRSStruct.Kp = 0.5;
-	else
-		AHRSStruct.Kp = 0;
+if ~exist ('OCTAVE_VERSION', 'builtin')
+	AHRSalgorithm = AHRS('SamplePeriod', 1/50, 'Kp', 1, 'KpInit', 1);
+	for i = 1:2000
+		AHRSalgorithm.UpdateIMU([0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
 	end
-	AHRSStruct = UpdateIMU(AHRSStruct,deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
-    quat(t,:) = AHRSStruct.Quaternion;
+
+	% For all data
+	for t = 1:length(time)
+		if(stationary(t))
+			AHRSalgorithm.Kp = 0.5;
+		else
+			AHRSalgorithm.Kp = 0;
+		end
+		AHRSalgorithm.UpdateIMU(deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
+		quat(t,:) = AHRSalgorithm.Quaternion;
+	end
+else	%classdef wasn't implemented in Octave 3.6.4
+	AHRSStruct = AHRS_Octave('SamplePeriod', 1/50, 'Kp', 1, 'KpInit', 1);
+	% Initial convergence
+	initPeriod = 2;
+	indexSel = 1 : find(sign(time-(time(1)+initPeriod))+1, 1);
+	for i = 1:2000
+		AHRSStruct = UpdateIMU(AHRSStruct,[0 0 0], [mean(accX(indexSel)) mean(accY(indexSel)) mean(accZ(indexSel))]);
+	end
+
+    disp(AHRSStruct.q);
+	% For all data
+	for t = 1:length(time)
+		if(stationary(t))
+			AHRSStruct.Kp = 0.5;
+		else
+			AHRSStruct.Kp = 0;
+		end
+		AHRSStruct = UpdateIMU(AHRSStruct,deg2rad([gyrX(t) gyrY(t) gyrZ(t)]), [accX(t) accY(t) accZ(t)]);
+		quat(t,:) = AHRSStruct.Quaternion;
+	end
 end
 % -------------------------------------------------------------------------
 % Compute translational accelerations
 
 % Rotate body accelerations to Earth frame
-%quat = [qW qX qY qZ]
+quat = [qW qX qY qZ]
 
 acc = quaternRotate([accX accY accZ], quaternConj(quat));
 
