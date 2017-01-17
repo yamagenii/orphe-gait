@@ -101,7 +101,7 @@ stationary = acc_magFilt < 0.05;
 % -------------------------------------------------------------------------
 % Plot data raw sensor data and stationary periods
 
-figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Sensor Data');
+figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'Sensor Data');
 ax(1) = subplot(3,1,1);
     hold on;
     plot(time, gyrX, 'r');
@@ -191,7 +191,7 @@ acc = acc * 9.81;
 
 quat = [qW qX qY qZ];
 % Plot quaternion
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Quaternion');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Quaternion');
 hold on;
 plot(time, quat(:,1), 'r');
 plot(time, quat(:,2), 'g');
@@ -205,7 +205,7 @@ hold off;
 
 % -------------------------------------------------------------------------
 % Plot translational accelerations
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Accelerations');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Accelerations');
 hold on;
 plot(time, acc(:,1), 'r');
 plot(time, acc(:,2), 'g');
@@ -247,7 +247,7 @@ end
 vel = vel - velDrift;
 
 % Plot translational velocity
-figure('Position', [9 39 900 300], 'Number', 'off', 'Name', 'Velocity');
+figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Velocity');
 hold on;
 plot(time, vel(:,1), 'r');
 plot(time, vel(:,2), 'g');
@@ -270,7 +270,7 @@ end
 planeNorm = sqrt(pos(:,1).*pos(:,1) + pos(:,2).*pos(:,2));
 
 % Plot translational position
-figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Position');
+figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'Position');
 hold on;
 plot(time, pos(:,1), 'r');
 plot(time, pos(:,2), 'g');
@@ -286,7 +286,7 @@ hold off;
 % Plot 3D foot trajectory
 
 % 
-figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Position3d');
+figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'Position3d');
 plot3(pos(:,1),pos(:,2),pos(:,3), 'r*');
 title('Position3d');
 xlabel('xPosition (m)');
