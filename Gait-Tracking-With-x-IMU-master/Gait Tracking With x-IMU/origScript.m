@@ -22,10 +22,12 @@ else
 end 
 startTime = 6;
 stopTime = 26;
+startTime = 13;
+stopTime = 13.5;
 
-% filePath = 'Datasets/stairsAndCorridor';
-% startTime = 5;
-% stopTime = 53;
+ filePath = 'Datasets/stairsAndCorridor_CalInertialAndMag.csv';
+ startTime = 5;
+ stopTime = 53;
 
 % filePath = 'Datasets/spiralStairs';
 % startTime = 4;
@@ -37,13 +39,36 @@ stopTime = 26;
 samplePeriod = 1/256;
 if exist ('OCTAVE_VERSION', 'builtin') 
 	xIMUdata = dlmread(filePath,',',1,0);
-	time = xIMUdata(:,1)*samplePeriod;
-	gyrX = xIMUdata(:,2);
-	gyrY = xIMUdata(:,3);
-	gyrZ = xIMUdata(:,4);
-	accX = xIMUdata(:,5);
-	accY = xIMUdata(:,6);
-	accZ = xIMUdata(:,7);
+    tmpNum = 1;
+	time = [];
+	gyrX = [];
+	gyrY = [];
+	gyrZ = [];
+	accX = [];
+	accY = [];
+	accZ = [];
+    for i = 1:1:size(xIMUdata,1)
+        if xIMUdata(i,1) - tmpNum >= 4
+	        time = [time;xIMUdata(i,1)*1/256];
+	        gyrX = [gyrX;xIMUdata(i,2)];
+	        gyrY = [gyrY;xIMUdata(i,3)];
+	        gyrZ = [gyrZ;xIMUdata(i,4)];
+	        accX = [accX;xIMUdata(i,5)];
+	        accY = [accY;xIMUdata(i,6)];
+	        accZ = [accZ;xIMUdata(i,7)];
+            tmpNum = xIMUdata(i,1);
+            if i < 100
+                disp(tmpNum);
+            end
+        end
+    end
+	time256 = xIMUdata(:,1)*1/256;
+	gyrX256 = xIMUdata(:,2);
+	gyrY256 = xIMUdata(:,3);
+	gyrZ256 = xIMUdata(:,4);
+	accX256 = xIMUdata(:,5);
+	accY256 = xIMUdata(:,6);
+	accZ256 = xIMUdata(:,7);
 else
 	xIMUdata = xIMUdataClass(filePath, 'InertialMagneticSampleRate', 1/samplePeriod);
 	time = xIMUdata.CalInertialAndMagneticData.Time;
@@ -70,6 +95,14 @@ accX = accX(indexSel, :);
 accY = accY(indexSel, :);
 accZ = accZ(indexSel, :);
 
+indexSel = find(sign(time256-startTime)+1, 1) : find(sign(time256-stopTime)+1, 1);
+time = time256(indexSel);
+gyrX = gyrX256(indexSel, :);
+gyrY = gyrY256(indexSel, :);
+gyrZ = gyrZ256(indexSel, :);
+accX = accX256(indexSel, :);
+accY = accY256(indexSel, :);
+accZ = accZ256(indexSel, :);
 % -------------------------------------------------------------------------
 % Detect stationary periods
 
@@ -98,25 +131,29 @@ stationary = acc_magFilt < 0.05;
 figure('Position', [9 39 900 600], 'Number', 'off', 'Name', 'Sensor Data');
 ax(1) = subplot(3,1,1);
     hold on;
-    plot(time, gyrX, 'r');
-    plot(time, gyrY, 'g');
-    plot(time, gyrZ, 'b');
+    %plot(time, gyrX, 'r');
+    %plot(time, gyrY, 'g');
+    %plot(time, gyrZ, 'b');
+    plot(time256, accX256, 'r');
+    plot(time256, accY256, 'g');
+    plot(time256, accZ256, 'b');
     title('Gyroscope');
     xlabel('Time (s)');
     ylabel('Angular velocity (^\circ/s)');
-    legend('X', 'Y', 'Z');
+    ylabel('Acceleration (g)');
+    %legend('X', 'Y', 'Z');
     hold off;
 ax(2) = subplot(3,1,2);
     hold on;
     plot(time, accX, 'r');
     plot(time, accY, 'g');
     plot(time, accZ, 'b');
-    plot(time, acc_magFilt, ':k');
-    plot(time, double(stationary), 'k', 'LineWidth', 2);	%Octave couldn't plot booleans
+    %plot(time, acc_magFilt, ':k');
+    %plot(time, double(stationary), 'k', 'LineWidth', 2);	%Octave couldn't plot booleans
     title('Accelerometer');
     xlabel('Time (s)');
     ylabel('Acceleration (g)');
-    legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
+    %legend('X', 'Y', 'Z', 'Filtered', 'Stationary');
     hold off;
 ax(3) = subplot(3,1,3);
     hold on;
@@ -226,7 +263,8 @@ acc(:,3) = acc(:,3) - 9.81;
 % Integrate acceleration to yield velocity
 vel = zeros(size(acc));
 for t = 2:length(vel)
-    vel(t,:) = vel(t-1,:) + acc(t,:) * samplePeriod;
+    %vel(t,:) = vel(t-1,:) + acc(t,:) * samplePeriod;
+    vel(t,:) = vel(t-1,:) + acc(t,:) * (time(t,:)-time(t-1,:));
     if(stationary(t) == 1)
         vel(t,:) = [0 0 0];     % force zero velocity when foot stationary
     end

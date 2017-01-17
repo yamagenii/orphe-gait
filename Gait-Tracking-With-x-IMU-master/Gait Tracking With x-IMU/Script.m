@@ -16,14 +16,19 @@ pkg load signal
 %stopTime = 89;
 
 %mid
-filePath = './line_mid.csv'
-startTime = 53;
-stopTime = 78;
+%filePath = './line_mid.csv'
+%startTime = 55.5;
+%stopTime = 56.5;
 
 %normal
 %filePath = './line_nomal.csv'
 %startTime = 38;
 %stopTime = 63;
+
+%rot
+filePath = './rot_slow.csv';
+startTime = 5;
+stopTime = 80;
 
 % -------------------------------------------------------------------------
 % Import data
@@ -113,10 +118,11 @@ ax(2) = subplot(3,1,2);
     plot(time, accY, 'g');
     plot(time, accZ, 'b');
     %plot(time, acc_mag, 'r');
+    plot(time, double(stationary), 'k', 'LineWidth', 2);%octave
     title('Accelerometer');
     xlabel('Time (s)');
     ylabel('Acceleration (g)');
-    legend('X', 'Y', 'Z');
+    legend('X', 'Y', 'Z', 'stationary');
     hold off;
 ax(3) = subplot(3,1,3);
     hold on;
@@ -173,6 +179,8 @@ end
 % Compute translational accelerations
 
 % Rotate body accelerations to Earth frame
+%quat = [qW qX qY qZ]
+
 acc = quaternRotate([accX accY accZ], quaternConj(quat));
 
 % % Remove gravity from measurements

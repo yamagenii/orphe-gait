@@ -13,7 +13,7 @@ function obj = UpdateIMU(obj, Gyroscope, Accelerometer)
 		2*(obj.q(1)*obj.q(2) + obj.q(3)*obj.q(4))
 		obj.q(1)^2 - obj.q(2)^2 - obj.q(3)^2 + obj.q(4)^2];               	% estimated direction of gravity
 	error = cross(v, Accelerometer');
-	
+	%disp(error);
 %            	% Compute ramped Kp value used during init period
 %             if(obj.KpRamped > obj.Kp)
 %                 obj.IntError = [0 0 0]';
